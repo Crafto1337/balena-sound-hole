@@ -1,97 +1,102 @@
-version: '2'
+version: "2"
+
+volumes:
+  spotifycache:
+  pihole_config:
+  dnsmasq_config:
 
 services:
-  bluetooth-audio:
-    build: ./bluetooth-audio
-    restart: on-failure
-    network_mode: host
+  # Core services
+  # -- Required for a fully featured installation of balenaSound
+  # -- Mutiroom services can be removed if not using multiroom mode
+  audio:
+    build: ./core/audio
     privileged: true
     labels:
       io.balena.features.dbus: 1
-    volumes:
-      - bluetoothcache:/var/cache/bluetooth
-      - snapcast:/var/cache/snapcast
-
-  airplay:
-    build: ./airplay
-    restart: on-failure
-    network_mode: host
-    privileged: true
-    labels:
-      io.balena.features.dbus: 1
-    volumes:
-      - snapcast:/var/cache/snapcast
-
-  spotify:
-    build: ./spotify
-    restart: on-failure
-    network_mode: host
-    privileged: true
-    volumes:
-      - spotifycache:/var/cache/raspotify
-      - snapcast:/var/cache/snapcast
-
-  fleet-supervisor:
-    build: ./fleet-supervisor
-    restart: on-failure
-    network_mode: host
-    privileged: true
     ports:
-      - 3000:3000
+      - 4317:4317
+
+  sound-supervisor:
+    build:
+      context: .
+      dockerfile: ./core/sound-supervisor/Dockerfile.template
+    network_mode: host
     labels:
+      io.balena.features.balena-api: "1"
       io.balena.features.supervisor-api: 1
 
-  snapcast-server:
-    build: 
-      context: ./snapcast-server
+  multiroom-server:
+    build: ./core/multiroom/server
     restart: on-failure
     ports:
       - 1704:1704
       - 1705:1705
-    volumes:
-      - snapcast:/var/cache/snapcast
+      - 1780:1780
 
-  snapcast-client:
-    build: 
-      context: ./snapcast-client
-    restart: on-failure 
-    network_mode: host 
+  multiroom-client:
+    build: ./core/multiroom/client
+    restart: on-failure
+
+  # Plugins
+  # -- Additional plugins can be added. See https://balena-labs-projects.github.io/balena-sound/plugins.
+  # -- Remove unwanted plugins as needed
+  bluetooth:
+    build: ./plugins/bluetooth
+    restart: on-failure
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    labels:
+      io.balena.features.dbus: 1
+
+  #airplay:
+  #  build: ./plugins/airplay
+  #  restart: on-failure
+  #  network_mode: host
+  #  privileged: true
+  #  labels:
+  #    io.balena.features.dbus: 1
+
+  spotify:
+    build: ./plugins/spotify
+    restart: on-failure
     privileged: true
+    network_mode: host
     volumes:
-      - snapcast:/var/cache/snapcast
+      - spotifycache:/var/cache/raspotify
 
-  upnp:
-    build: ./upnp
-    restart: on-failure 
-    network_mode: host 
-    ports:
-      - 49494:49494
-    volumes:
-      - snapcast:/var/cache/snapcast
+  # https://github.com/balenablocks/hostname
+  hostname:
+    build: ./core/hostname
+    restart: no
+    labels:
+      io.balena.features.supervisor-api: 1
+    environment:
+      SET_HOSTNAME: balena
 
   pihole:
-    build: ./pihole
-    privileged: true
+    build: pihole
+    cap_add:
+      - SYS_TTY_CONFIG
+      - NET_ADMIN
     volumes:
-      - 'pihole_config:/etc/pihole'
-      - 'dnsmasq_config:/etc/dnsmasq.d'
+      - "pihole_config:/etc/pihole"
+      - "dnsmasq_config:/etc/dnsmasq.d"
     dns:
-      - '127.0.0.1'
-      - '1.1.1.1'
+      - "127.0.0.1"
+      - "1.1.1.1"
     network_mode: host
+    labels:
+      io.balena.features.dbus: "1"
+    devices:
+      - /dev/tty0
+      - /dev/tty1
+    tmpfs:
+      - /var/log/pihole
 
-  # set pihole DNS1 and DNS2 service variables to 127.0.0.1#5053 to use dnscrypt-proxy for upstream DNS
-  dnscrypt-proxy:
-    build: ./dnscrypt-proxy
-    volumes:
-      - 'dnscrypt_config:/config'
+  unbound:
+    build: unbound
     ports:
-      - '5053:5053/udp'
-      
-volumes:
-  spotifycache:
-  bluetoothcache:
-  snapcast:
-  pihole_config:
-  dnsmasq_config:
-  dnscrypt_config:
+      - "5053:5053/tcp"
+      - "5053:5053/udp"
