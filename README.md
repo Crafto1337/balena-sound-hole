@@ -1,4 +1,4 @@
-![Logo](images/logo.PNG)
+![Logo](logo.PNG)
 
 **Project enabling you to add multi-room audio streaming via Bluetooth, Airplay or Spotify Connect to any old speakers or Hi-Fi as well as network-wide ad blocking using just a Raspberry Pi.**
 
@@ -97,6 +97,8 @@ Pi-hole also have an [extensive forum thread](https://discourse.pi-hole.net/t/ho
 You can access the web interface if you’re on the same network by visiting the local IP address of your new device in a browser. If you don’t know the IP of your device, the easiest way to find it is on the [balenaCloud dashboard](https://dashboard.balena-cloud.com/apps).
 
 Example: <local address>:81/admin
+
+Default password: password
 
 # Documentation 
 
